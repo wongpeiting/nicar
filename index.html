@@ -42,7 +42,7 @@
   .btn-clear:hover { background: #fef3c7; }
   .btn-share { color: #047857; border-color: #047857; }
   .btn-share:hover { background: #ecfdf5; }
-  .btn-export { color: #1e40af; border-color: #1e40af; margin-left: auto; }
+  .btn-export { color: #1e40af; border-color: #1e40af; }
   .btn-export:hover { background: #eff6ff; }
 
   .grid-wrap { overflow-x: auto; padding: 0 16px 16px; }
@@ -170,7 +170,6 @@
   <input type="text" class="search-box" id="searchBox" placeholder="Search sessions or speakers..." />
   <select class="filter-select" id="typeFilter"><option value="">All types</option></select>
   <select class="filter-select" id="trackFilter"><option value="">All tracks</option></select>
-  <div class="credit" style="margin-left:auto;padding:0">Schedule grid concept and design by <a href="https://www.tylermachado.com/nicar-schedule/" target="_blank">Tyler Machado</a>. Data from <a href="https://schedules.ire.org" target="_blank">IRE/NICAR</a>.</div>
 </div>
 <div class="controls" id="controls">
   <span class="highlight-count" id="highlightCount" style="display:none"></span>
@@ -178,6 +177,7 @@
   <button class="btn-small btn-clear" id="btnClearHighlights" style="display:none" onclick="clearHighlights()">Clear all</button>
   <button class="btn-small btn-share" id="btnShare" style="display:none" onclick="shareHighlights()">Copy share link</button>
   <button class="btn-small btn-export" id="btnExport" style="display:none" onclick="exportHighlights()">Export as text</button>
+  <div class="credit" style="margin-left:auto;padding:0">Schedule grid concept and design by <a href="https://www.tylermachado.com/nicar-schedule/" target="_blank">Tyler Machado</a>. Data from <a href="https://schedules.ire.org" target="_blank">IRE/NICAR</a>.</div>
 </div>
 <div class="grid-wrap">
   <div class="schedule-grid" id="grid"></div>
