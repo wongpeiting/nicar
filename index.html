@@ -361,7 +361,7 @@ function openModal(sessionId) {
   h += '</div>';
 
   h += '<button class="btn-highlight '+(isHl?'is-highlighted':'')+'" style="margin-bottom:12px" onclick="toggleHighlight(\''+sessionId+'\');openModal(\''+sessionId+'\')">';
-  h += isHl ? '\u2605 Highlighted' : '\u2606 Highlight this session';
+  h += isHl ? '\u2605 Attending' : '\u2606 Want to attend';
   h += '</button>';
 
   if (s.description) h += '<div class="description">'+escHtml(s.description)+'</div>';
