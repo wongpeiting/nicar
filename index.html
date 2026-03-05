@@ -362,6 +362,11 @@ function openModal(sessionId) {
   if (s.skill_level) h += '<span>'+escHtml(s.skill_level)+'</span>';
   if (s.recorded==='true') h += '<span>\ud83d\udcf9 Recorded</span>';
   h += '</div>';
+
+  h += '<button class="btn-highlight '+(isHl?'is-highlighted':'')+'" style="margin-bottom:12px" onclick="toggleHighlight(\''+sessionId+'\');openModal(\''+sessionId+'\')">';
+  h += isHl ? '\u2605 Highlighted' : '\u2606 Highlight this session';
+  h += '</button>';
+
   if (s.description) h += '<div class="description">'+escHtml(s.description)+'</div>';
 
   if (spk.length > 0) {
@@ -392,10 +397,6 @@ function openModal(sessionId) {
     h += '</div>';
   }
   if (s.cost) h += '<p style="font-size:0.85rem;color:#dc2626;margin-bottom:8px">Cost: $'+escHtml(s.cost)+'</p>';
-
-  h += '<button class="btn-highlight '+(isHl?'is-highlighted':'')+'" onclick="toggleHighlight(\''+sessionId+'\');openModal(\''+sessionId+'\')">';
-  h += isHl ? '\u2605 Highlighted' : '\u2606 Highlight this session';
-  h += '</button>';
 
   document.getElementById('modal').innerHTML = h;
   document.getElementById('modalOverlay').classList.add('open');
