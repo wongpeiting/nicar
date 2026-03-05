@@ -1,8 +1,6 @@
 # NICAR 2026 Schedule Grid
 
-A schedule grid for the [NICAR 2026 conference](https://www.ire.org/training/conferences/nicar-2026/) in Indianapolis, with speaker bios and session highlighting.
-
-**Live site:** https://wongpeiting.github.io/nicar/
+A quick and dirty schedule grid for the [NICAR 2026 conference](https://www.ire.org/training/conferences/nicar-2026/) in Indianapolis, with speaker bios and session highlighting. For lazy conference attendees who appreciate the beauty of a schedule that [Tyler Machado](https://www.tylermachado.com/nicar-schedule/) has created and needs a tool to annotate events they wanted to attend.
 
 ## Credits
 
