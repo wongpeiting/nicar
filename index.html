@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>NICAR 2026 Schedule Grid</title>
-<meta name="description" content="Browse and explore the full schedule grid for NICAR 2026 conference sessions and events." />
+<title>NICAR 2026 Resources & Schedule</title>
+<meta name="description" content="Browse sessions and materials from the NICAR 2026 data journalism conference." />
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; color: #111; }
 
-  .header { padding: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+  .header { padding: 16px 16px 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
   .header h1 { font-size: 1.75rem; font-weight: 700; }
   .day-tabs { display: flex; gap: 8px; }
   .day-tab {
@@ -160,16 +160,31 @@
 
   .credit { padding: 16px; font-size: 0.75rem; color: #9ca3af; text-align: center; }
   .credit a { color: #6b7280; }
+
+  .modal .materials { margin-bottom: 14px; padding: 10px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; }
+  .modal .materials strong { font-size: 0.85rem; display: block; margin-bottom: 4px; }
+  .modal .materials ul { list-style: none; padding: 0; margin: 0; }
+  .modal .materials li { margin-bottom: 3px; }
+  .modal .materials a { color: #047857; font-weight: 500; text-decoration: none; font-size: 0.85rem; }
+  .modal .materials a:hover { text-decoration: underline; }
+  .btn-tipsheets { color: #047857; border-color: #059669; }
+  .btn-tipsheets:hover, .btn-tipsheets.active { background: #ecfdf5; }
+  .session-card.has-materials { border-left: 6px solid #059669; }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>NICAR 2026</h1>
+  <h1>NICAR 2026 Resources</h1>
   <div class="day-tabs" id="dayTabs"></div>
   <input type="text" class="search-box" id="searchBox" placeholder="Search sessions or speakers..." />
   <select class="filter-select" id="typeFilter"><option value="">All types</option></select>
   <select class="filter-select" id="trackFilter"><option value="">All tracks</option></select>
+  <button class="btn-small btn-tipsheets" id="btnTipsheets" onclick="toggleTipsheets()">Has tipsheets</button>
+  <button class="btn-small btn-tipsheets" onclick="toggleGeneralResources()">More resources</button>
+  <div class="credit" style="margin-left:auto;padding:0">Grid by <a href="https://www.tylermachado.com/nicar-schedule/" target="_blank">Tyler Machado</a>. Data from <a href="https://schedules.ire.org" target="_blank">IRE/NICAR</a>. Tipsheets: <a href="https://www.machlis.com/nicar/" target="_blank">Machlis</a></div>
+</div>
+<div id="generalResourcesPanel" style="display:none;padding:8px 16px;background:#f0fdf4;border-bottom:1px solid #bbf7d0;font-size:0.8rem;line-height:1.8">
 </div>
 <div class="controls" id="controls">
   <span class="highlight-count" id="highlightCount" style="display:none"></span>
@@ -177,7 +192,6 @@
   <button class="btn-small btn-clear" id="btnClearHighlights" style="display:none" onclick="clearHighlights()">Clear all</button>
   <button class="btn-small btn-share" id="btnShare" style="display:none" onclick="shareHighlights()">Copy share link</button>
   <button class="btn-small btn-export" id="btnExport" style="display:none" onclick="exportHighlights()">Export as text</button>
-  <div class="credit" style="margin-left:auto;padding:0">Schedule grid concept and design by <a href="https://www.tylermachado.com/nicar-schedule/" target="_blank">Tyler Machado</a>. Data from <a href="https://schedules.ire.org" target="_blank">IRE/NICAR</a>.</div>
 </div>
 <div class="grid-wrap">
   <div class="schedule-grid" id="grid"></div>
@@ -194,12 +208,178 @@
 <script>
 const SPEAKER_DB = JSON.parse(document.getElementById('speakerData').textContent);
 const CSV_URL = 'https://ire-nicar-conference-schedules.s3.us-east-2.amazonaws.com/nicar-2026/nicar-2026-schedule.csv';
+const JSON_URL = 'https://ire-nicar-conference-schedules.s3.us-east-2.amazonaws.com/nicar-2026/nicar-2026-schedule.json';
 const ROW_HEIGHT = 15;
 
 let sessions = [];
+let sessionMaterials = {}; // session_id -> [{url, text}]
+
+// Materials from Machlis NICAR resources (apps.machlis.com/shiny/nicar20_resources/) + session notes
+const CURATED_MATERIALS = {
+  '1008': [
+    {url: 'https://docs.google.com/presentation/d/1Qw--VgCdl-eJ4vdHXdKI2TH4YqG0VGK6L8COQ0xxpQU/', text: 'Slides: AI Concepts You Should Know'}
+  ],
+  '1036': [
+    {url: 'https://github.com/MuckRock/NICAR/blob/main/2026-public-records-llm/README.md', text: 'GitHub: Enhancing public records with LLMs'}
+  ],
+  '1041': [
+    {url: 'https://docs.google.com/presentation/d/1yAU-LBCD5XNsVBCImDyZVLgiOo4MRGmTDA6BXaLSFJU/', text: 'Slides: Network visualization'},
+    {url: 'https://drive.google.com/drive/folders/1BUHJBh9s3Twts5A0idFw_jDr1Gg3nLs-', text: 'Google Drive folder'},
+    {url: 'https://docs.google.com/document/d/1lqkIguEsfbnJ502Zw4p8XtIOxoQDY4TopF2x80oxqMY/', text: 'Handout'},
+    {url: 'https://trislee.github.io/network-demo/', text: 'Demo site'},
+    {url: 'https://github.com/trislee/network-demo', text: 'GitHub: network-demo'}
+  ],
+  '1053': [
+    {url: 'https://simonw.github.io/nicar-2026-coding-agents/', text: 'Workshop site: Coding agents (Willison)'},
+    {url: 'https://docs.google.com/document/d/1n_OgvnixNImAv6QpvOd0IhbZ34mQYz16pp3c7iiPdiU/', text: 'Session notes'}
+  ],
+  '1061': [
+    {url: 'https://github.com/olihawkins/nicar-2026-polars', text: 'GitHub: Polars and Python'}
+  ],
+  '1063': [
+    {url: 'https://github.com/DiPierro/nicar26-10-things-R', text: 'GitHub: 10 things in R'}
+  ],
+  '1075': [
+    {url: 'https://docs.google.com/presentation/d/1d1SyP5UuT7GLroob9LDqYIxxmRMNC7Ai6jS8z5I22ds/', text: 'Slides: Investigate influencers (Yin)'}
+  ],
+  '1078': [
+    {url: 'https://github.com/jhase9/nicar-geopandas-demo', text: 'GitHub: Geopandas demo'},
+    {url: 'https://maplibre.org/', text: 'MapLibre'},
+    {url: 'https://projectionwizard.org/', text: 'Projection Wizard'}
+  ],
+  '1089': [
+    {url: 'https://github.com/juliaingram/asylum-denial-rates-nicar26', text: 'GitHub: Asylum denial rates'}
+  ],
+  '1092': [
+    {url: 'https://github.com/noslouch/nicar26-scraping-social', text: 'GitHub: Scraping social media'}
+  ],
+  '1098': [
+    {url: 'https://docs.google.com/document/d/1txnZPaPkdOgM2lAoLCzRBYG7zd47cyfofEWJXcpAv4I/', text: 'Tipsheet: Google Earth Engine'}
+  ],
+  '1106': [
+    {url: 'https://jsoma.github.io/natural-pdf-workshop/', text: 'Workshop: Natural PDF (Soma)'}
+  ],
+  '1107': [
+    {url: 'https://jsoma.github.io/workshop-ai-images-video/nicar-2026/', text: 'Workshop site: AI images & video (Soma)'},
+    {url: 'https://colab.research.google.com/github/jsoma/workshop-ai-images-video/blob/main/notebooks/nicar-2026/05-recipes.ipynb', text: 'Colab notebook'},
+    {url: 'https://docs.ultralytics.com/models/yoloe/', text: 'YOLOE docs'},
+    {url: 'https://universe.roboflow.com/', text: 'Roboflow Universe'}
+  ],
+  '1110': [
+    {url: 'https://github.com/shmcminn/nicar26-github-actions', text: 'GitHub: GitHub Actions automation'}
+  ],
+  '1117': [
+    {url: 'https://docs.google.com/document/d/1zoZAODDLmF2I-948a_Rus6glUXCaoFVp539PlJO2DQM/', text: 'Tipsheet: CDC Wonder'}
+  ],
+  '1122': [
+    {url: 'https://docs.google.com/presentation/d/1UgFwBHdsQjo96z6FJQuX-ayvaDrpBQxUJEOq8u9ehYQ/', text: 'Slides: Crypto investigations'}
+  ],
+  '1123': [
+    {url: 'https://github.com/amkessler/nicar2026_skills_in_codex_claude', text: 'GitHub: Skills in Codex & Claude'}
+  ],
+  '1127': [
+    {url: 'https://github.com/profrobwells/nicar2026/tree/main/NICAR_Text_Analysis_2026', text: 'GitHub: R text analysis (Wells)'}
+  ],
+  '1131': [
+    {url: 'https://github.com/Lobbying-DisclosuRe/lobbyR_NICAR', text: 'GitHub: LobbyR'}
+  ],
+  '1138': [
+    {url: 'https://github.com/sahanasjay/NICAR_how_to_hmda', text: 'GitHub: HMDA mortgage data'}
+  ],
+  '1143': [
+    {url: 'https://mapshaper.org/', text: 'Mapshaper'}
+  ],
+  '1150': [
+    {url: 'https://colab.research.google.com/drive/1NrbfS4ik_przKU74RyuWhBvcFFTQVQmN', text: 'Colab: Fact-checking data stories'}
+  ],
+  '1153': [
+    {url: 'https://docs.google.com/presentation/d/1GCvVxQYICbTGAWuZxGTWa-PxEwM85xqHCNbcKAz5nEg/', text: 'Slides: Deaths in custody'}
+  ],
+  '1190': [
+    {url: 'https://github.com/asg017/nicar26-libfec', text: 'GitHub: libfec'}
+  ],
+  '1224': [
+    {url: 'https://docs.google.com/presentation/d/1tkfPITbBHQS3brKJhEN35CQ9Kdi6FNfWLIxj2otKMKg/', text: 'Slides: Making public data public'}
+  ],
+  '1226': [
+    {url: 'https://github.com/aarushisahejpal/localmodels-nicar26', text: 'GitHub: Running LLMs locally'}
+  ],
+  '1240': [
+    {url: 'https://github.com/karina-kumar/NICAR26-R-Sessions', text: 'GitHub: R data analysis & plotting'}
+  ],
+  '1251': [
+    {url: 'https://github.com/asg017/nicar26-pdf', text: 'GitHub: PDF extraction'}
+  ],
+  '1252': [
+    {url: 'https://inspectelement.org/apis.html', text: 'Tutorial: Finding undocumented APIs'},
+    {url: 'https://themarkup.org/levelup/2023/03/03/journalists-you-should-be-looking-for-undocumented-apis-heres-how-to-start', text: 'The Markup guide'}
+  ],
+  '1255': [
+    {url: 'https://utdata.github.io/openrefine/', text: 'Tutorial: OpenRefine (McDonald)'}
+  ],
+  '1274': [
+    {url: 'https://github.com/palewire/first-llm-classifier', text: 'GitHub: First LLM Classifier'}
+  ],
+  '1278': [
+    {url: 'https://github.com/ireapps/NICAR26-Intro-to-R', text: 'GitHub: Intro to R'}
+  ],
+  '1289': [
+    {url: 'https://scout.dnsdb.info/', text: 'DNSDB Scout'},
+    {url: 'https://docs.domaintools.com/iris/', text: 'DomainTools Iris docs'}
+  ],
+  '1295': [
+    {url: 'https://github.com/catelizabethmurphy/nicar26/tree/main', text: 'GitHub: Transportation data'}
+  ],
+  '1296': [
+    {url: 'https://github.com/jeffhargarten/nicar26_ice', text: 'GitHub: Deportation data'}
+  ],
+  '1303': [
+    {url: 'https://palewi.re/docs/first-pmtiles-map/', text: 'Tutorial: First PMTiles Map'},
+    {url: 'https://pmtiles.io/', text: 'PMTiles.io'},
+    {url: 'https://reuters-graphics.github.io/docs_graphics-kit/', text: 'Reuters Graphics kit'}
+  ],
+  '1320': [
+    {url: 'https://anti-captcha.com/apidoc', text: 'Anti-Captcha API docs'}
+  ],
+  '1326': [
+    {url: 'https://journalismcourses.org/product/data-mindset-for-editors/', text: 'Course: Data Mindset for Editors'}
+  ],
+  '1332': [
+    {url: 'https://jsoma.github.io/workshop-evals/', text: 'Workshop: AI evals (Soma)'}
+  ],
+  '1343': [
+    {url: 'https://docs.google.com/presentation/d/1hsUra03oBO5A_hkxxEk5IhCG1SRUEPpsMqe1dQ3cBvQ/', text: 'Slides: Reading local govt budgets'}
+  ],
+  '1355': [
+    {url: 'https://github.com/profrobwells/nicar2026/', text: 'GitHub: Document processing (Wells)'}
+  ],
+  '1356': [
+    {url: 'https://docs.google.com/presentation/d/1sJesqpagUodBRXfkyNDEZa0x-udeiV8PdtDWdU4D-K0/', text: 'Slides: Today\'s News for Tomorrow'}
+  ],
+};
+
+const GENERAL_RESOURCES = [
+  {url: 'https://aiglossary.news', text: 'AI Glossary for Journalists'},
+  {url: 'https://drive.google.com/drive/folders/1qLLtShke2lWtqP6DSvmpDWdypab2z760', text: 'AI Tools that Won\'t Get You Fired (Reilley)'},
+  {url: 'https://jsoma.github.io/workshop-browser-automation/', text: 'Workshop: Browser automation with Playwright (Soma)'},
+  {url: 'https://github.com/NewsAppsUMD/nicar2026', text: 'GitHub: Building newsroom products with LLMs'},
+  {url: 'https://catelizabethmurphy.github.io/carol_cleaner/', text: 'CAROL Cleaner (NTSB safety data)'},
+  {url: 'https://github.com/charlesminshew/nicar26/tree/main/coaching-ai-tools', text: 'GitHub: Coaching AI tools (Minshew)'},
+  {url: 'https://projects.propublica.org/trump-team-financial-disclosures/', text: 'ProPublica: Trump appointee financial disclosures'},
+  {url: 'https://github.com/jsoma/workshop-n8n', text: 'GitHub: No-code AI pipelines with n8n (Soma)'},
+  {url: 'https://docs.google.com/presentation/d/1wDK-GO6-E2DtfI4kYPCMcxi-7TT6vNtcXRvpAGZYyqU/', text: 'Slides: Quiz the Vote (Wyloge, Fish)'},
+  {url: 'https://mattwaite.github.io/nicar/2026-indianapolis-scraping-sports-with-r/', text: 'Tutorial: Scraping sports data with R (Waite)'},
+  {url: 'https://apps.machlis.com/shiny/nicar2026', text: 'NICAR Schedule Chatbot (Machlis)'},
+  {url: 'https://github.com/freedmand/semantra', text: 'Semantra: Semantic document search'},
+  {url: 'https://github.com/ang-eichhorst/legitalk', text: 'Legitalk: Smart transcripts from govt meetings'},
+  {url: 'https://github.com/jeremybmerrill/meaningfully', text: 'Meaningfully: Semantic search for spreadsheets'},
+  {url: 'https://github.com/aow207/nicar-26-data-viz-102', text: 'GitHub: Intro to Data Viz 102 - D3.js'},
+];
+
 let highlighted = new Set(JSON.parse(localStorage.getItem('nicar2026_highlights') || '[]'));
 let currentDate = null;
 let showOnlyHighlighted = false;
+let showOnlyTipsheets = false;
 
 // Load highlights from URL hash (shared links)
 (function() {
@@ -315,6 +495,21 @@ function toggleShowHighlighted() {
   document.getElementById('btnShowHl').classList.toggle('active', showOnlyHighlighted);
   applyFilters();
 }
+function toggleTipsheets() {
+  showOnlyTipsheets = !showOnlyTipsheets;
+  document.getElementById('btnTipsheets').classList.toggle('active', showOnlyTipsheets);
+  applyFilters();
+}
+function toggleGeneralResources() {
+  const panel = document.getElementById('generalResourcesPanel');
+  if (panel.style.display === 'none') {
+    panel.innerHTML = '<strong>General NICAR 2026 resources:</strong> ' +
+      GENERAL_RESOURCES.map(r => '<a href="'+escHtml(r.url)+'" target="_blank" rel="noopener" style="color:#047857;margin:0 6px">'+escHtml(r.text)+'</a>').join(' · ');
+    panel.style.display = '';
+  } else {
+    panel.style.display = 'none';
+  }
+}
 function shareHighlights() {
   const url = location.origin + location.pathname + '#picks=' + [...highlighted].join(',');
   navigator.clipboard.writeText(url).then(() => showToast('Share link copied!')).catch(() => prompt('Copy this link:', url));
@@ -360,8 +555,16 @@ function openModal(sessionId) {
   if (s.recorded==='true') h += '<span>\ud83d\udcf9 Recorded</span>';
   h += '</div>';
 
+  // Materials section — curated tipsheets and links
+  const mats = sessionMaterials[sessionId] || [];
+  if (mats.length) {
+    h += '<div class="materials"><strong>Tipsheets &amp; materials:</strong><ul>';
+    mats.forEach(m => { h += '<li><a href="'+escHtml(m.url)+'" target="_blank" rel="noopener">'+escHtml(m.text)+'</a></li>'; });
+    h += '</ul></div>';
+  }
+
   h += '<button class="btn-highlight '+(isHl?'is-highlighted':'')+'" style="margin-bottom:12px" onclick="toggleHighlight(\''+sessionId+'\');openModal(\''+sessionId+'\')">';
-  h += isHl ? '\u2605 Attending' : '\u2606 Want to attend';
+  h += isHl ? '\u2605 Bookmarked' : '\u2606 Bookmark';
   h += '</button>';
 
   if (s.description) h += '<div class="description">'+escHtml(s.description)+'</div>';
@@ -495,6 +698,7 @@ function renderGrid(date) {
     card.className = 'session-card';
     card.dataset.sid = s.session_id;
     if (highlighted.has(s.session_id)) card.classList.add('highlighted');
+    if (sessionMaterials[s.session_id] && sessionMaterials[s.session_id].length) card.classList.add('has-materials');
 
     // Filtering
     let hidden = false;
@@ -502,6 +706,7 @@ function renderGrid(date) {
     if (trackVal && !(s.tracks||'').toLowerCase().includes(trackVal.toLowerCase())) hidden = true;
     if (searchVal && !(s.title+' '+s.speakers+' '+s.description).toLowerCase().includes(searchVal)) hidden = true;
     if (showOnlyHighlighted && !highlighted.has(s.session_id)) hidden = true;
+    if (showOnlyTipsheets && !(sessionMaterials[s.session_id] && sessionMaterials[s.session_id].length)) hidden = true;
     if (hidden) card.classList.add('hidden-by-filter');
 
     card.style.cssText = 'grid-column:'+(col+2)+'; grid-row:'+startRow+'/'+endRow+';';
@@ -532,6 +737,33 @@ async function init() {
   const resp = await fetch(CSV_URL);
   const text = await resp.text();
   sessions = parseCSV(text);
+
+  // Fetch JSON to extract embedded links from HTML descriptions
+  try {
+    const jsonResp = await fetch(JSON_URL);
+    const jsonData = await jsonResp.json();
+    const jsonSessions = jsonData.sessions || jsonData;
+    (Array.isArray(jsonSessions) ? jsonSessions : []).forEach(js => {
+      if (!js.description) return;
+      const links = [];
+      const re = /<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+      let m;
+      while ((m = re.exec(js.description)) !== null) {
+        const url = m[1], label = m[2].replace(/<[^>]*>/g,'').trim() || m[1];
+        links.push({url, text: label});
+      }
+      if (links.length) sessionMaterials[String(js.session_id)] = links;
+    });
+  } catch(e) { console.warn('Could not fetch JSON for materials:', e); }
+
+  // Merge curated materials (takes priority, appended after JSON links)
+  Object.entries(CURATED_MATERIALS).forEach(([sid, mats]) => {
+    if (!mats.length) return;
+    const existing = sessionMaterials[sid] || [];
+    const urls = new Set(existing.map(m => m.url));
+    mats.forEach(m => { if (!urls.has(m.url)) { existing.push(m); urls.add(m.url); } });
+    sessionMaterials[sid] = existing;
+  });
 
   const dates = [...new Set(sessions.map(s=>s.date))].sort();
   const dn = {'2026-03-05':'Thu, Mar 5','2026-03-06':'Fri, Mar 6','2026-03-07':'Sat, Mar 7','2026-03-08':'Sun, Mar 8'};
